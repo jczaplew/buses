@@ -92,7 +92,7 @@ async.waterfall([
   // Get rid of routes
   function(routes, directions, routeDirections, callback) {
     async.eachLimit(routes, 5, function(route, callback) {
-      queryPg("INSERT INTO routes (route_id) VALUES ($1)", [route], function(error, result) {
+      queryPg("INSERT INTO routes_scraped (route_id) VALUES ($1)", [route], function(error, result) {
         if (error) {
           console.log(errror);
         }
@@ -125,12 +125,13 @@ async.waterfall([
     var stops = {};
     var tuples = [];
     async.eachLimit(Object.keys(routeDirections), 2, function(route, callback) {
-      async.each(routeDirections[route], function(direction, callback) {
+      async.eachLimit(routeDirections[route], 5, function(direction, callback) {
+
         request('http://webwatch.cityofmadison.com/webwatch/MobileAda.aspx?r=' + route + '&d=' + direction, function(error, response, body) {
           $ = cheerio.load(body);
           $('a').each(function(i, a) {
             var stop = $(this).text().trim();
-            if (badLinks.indexOf(stop) === -1 || stop.length < 1) {
+            if (badLinks.indexOf(stop) === -1 && stop.length > 0) {
               var href = $(this).attr('href');
               var stopID = href.substr(href.indexOf('s=') + 2, href.length);
               var brackets = stop.match(/\[([^)]+)\]/) ? stop.match(/\[([^)]+)\]/)[1] : '';
@@ -173,7 +174,7 @@ async.waterfall([
   // Record the stops
   function(stops, tuples, callback) {
     async.eachLimit(stops, 5, function(stop, callback) {
-      queryPg("INSERT INTO stops (stop_id, gtfs_id, name, alt_name, direction) VALUES ($1, $2, $3, $4, $5)", [stop.stop_id, stop.gtfs_id, stop.name, stop.alt_name, stop.direction], function(error, result) {
+      queryPg("INSERT INTO stops_scraped (stop_id, gtfs_id, name, alt_name, direction) VALUES ($1, $2, $3, $4, $5)", [stop.stop_id, stop.gtfs_id, stop.name, stop.alt_name, stop.direction], function(error, result) {
         if (error) {
           error.stop = stop;
           callback(error);
